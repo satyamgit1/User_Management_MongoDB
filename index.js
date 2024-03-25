@@ -3,8 +3,8 @@ const users = require("./MOCK_DATA.json");
 const fs = require("fs");
 const app = express();
 const PORT = 2000;
-
-//Middleware - plugin
+// DATE: 26 march 2024
+//Middleware - plugin 
 // use to send data from body
 app.use(express.urlencoded({ extended: false }));
 
