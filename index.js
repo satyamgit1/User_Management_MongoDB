@@ -8,8 +8,30 @@ const PORT = 2000;
 // use to send data from body
 app.use(express.urlencoded({ extended: false }));
 
+app.use((req,res,next)=>{
+ 
+console.log("hello from middleware 1");
+// req.Username = "satyam singh";
+fs.appendFile(
+  "log.txt",
+  `\n${Date.now()}:${req.ip} ${req.method}: ${req.path}`,
+  (err, data) => {
+    next();
+  }
+);
+
+// return res.json({msg : "hello from middleware 1"});
+})
+
+// app.use((req,res,next)=>{
+//   console.log("helo from middleware 2", req.Username);
+  
+//   return next();
+//   })
+
 // ROUTES
 app.get("/api/users", (req, res) => {
+  // console.log("I am in get route",req.Username);
   return res.json(users);
 });
 // this will display all the users with their details
