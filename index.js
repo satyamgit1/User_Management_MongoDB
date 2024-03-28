@@ -3,43 +3,39 @@ const express = require("express");
 const fs = require("fs");
 const mongoose = require("mongoose");
 
-
 const app = express();
 const PORT = 2000;
 
 //connection
-mongoose.connect("mongodb://127.0.0.1:27017/user_management")
-.then(()=>console.log("MongoDb is Connected"))
-.catch(err => console.log("Mongodb error", err));
-
-
-
+mongoose
+  .connect("mongodb://127.0.0.1:27017/user_management")
+  .then(() => console.log("MongoDb is Connected"))
+  .catch((err) => console.log("Mongodb error", err));
 
 //Schema of Mongoose
-const userSchema = new mongoose.Schema({
-firstName: {
-  type: String,
-  required: true
-},
-lastName: {
-  type: String,
-},
-email: {
-  type: String,
-  // required: true,
-
-},
-jobTitle: {
-  type: String,
-},
-gender: {
-  type: String,
-},
-},
- {timestamps: true}
+const userSchema = new mongoose.Schema(
+  {
+    firstName: {
+      type: String,
+      required: true,
+    },
+    lastName: {
+      type: String,
+    },
+    email: {
+      type: String,
+      // required: true,
+    },
+    jobTitle: {
+      type: String,
+    },
+    gender: {
+      type: String,
+    },
+  },
+  { timestamps: true }
 );
-const User = mongoose.model("user",userSchema);
-
+const User = mongoose.model("user", userSchema); //model name is also collection name
 
 // DATE: 26 march 2024
 //Middleware - plugin
@@ -67,10 +63,12 @@ app.use((req, res, next) => {
 //   })
 
 // ROUTES
-app.get("/api/users", (req, res) => {
+app.get("/api/users", async (req, res) => {
+  const allDbUsers = await User.find({});
+
   // console.log("I am in get route",req.Username);
   res.setHeader("X-myname", "satyam singh"); //  put x before header it indicate that it is a custom header
-  return res.json(users);
+  return res.json(allDbUsers);
 });
 // this will display all the users with their details
 
@@ -80,7 +78,9 @@ app.get("/users", async (req, res) => {
   // Generate HTML dynamically using template literals
   const html = `
       <ul>
-        ${allDbUsers.map((user) => `<li>${user.firstName} - ${user.email}</li>`).join("")}
+        ${allDbUsers
+          .map((user) => `<li>${user.firstName} - ${user.email}</li>`)
+          .join("")}
       </ul>
     `;
   // Send the HTML response
@@ -108,9 +108,8 @@ app.get("/users", async (req, res) => {
 
 app
   .route("/api/users/:id")
-  .get((req, res) => {
-    const id = Number(req.params.id);
-    const user = users.find((user) => user.id === id);
+  .get(async (req, res) => {
+    const user = await User.findById(req.params.id);
     if (user) {
       return res.json(user);
     } else {
@@ -128,27 +127,14 @@ app
       return res.status(404).json({ error: "User not found" });
     }
   })
-  .patch((req, res) => {
-    const id = Number(req.params.id);
-    const index = users.findIndex((user) => user.id === id);
-    if (index !== -1) {
-      users[index] = { ...users[index], ...req.body };
-      return res.json(users[index]);
-    } else {
-      return res.status(404).json({ error: "User not found" });
-    }
+  .patch(async (req, res) => {
+    await User.findByIdAndUpdate(req.params.id, { lastName: "tiwari" });
+    return res.json({ status: "success" });
+  })
+  .delete(async (req, res) => {
+    await User.findByIdAndDelete(req.params.id);
+    return res.json({ status: "success" });
   });
-// DELETE request to delete user by ID
-app.delete("/api/users/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const index = users.findIndex((user) => user.id === id);
-  if (index !== -1) {
-    users.splice(index, 1);
-    return res.json({ success: true, message: "User deleted successfully" });
-  } else {
-    return res.status(404).json({ error: "User not found" });
-  }
-});
 
 app.post("/api/users", async (req, res) => {
   const body = req.body;
@@ -170,9 +156,9 @@ app.post("/api/users", async (req, res) => {
     gender: body.gender,
     jobTitle: body.job_title,
   });
-  console.log("result",result);
+  console.log("result", result);
   return res.status(201).json({ msg: "success" });
-  // below lines is commented out for mongoDB 
+  // below lines is commented out for mongoDB
   // users.push({ ...body, id: users.length + 1 });
   // fs.writeFile("./MOCK_DATA.json", JSON.stringify(users), (error, data) => {
   //   return res.json({ status: "Success", id: users.length });
