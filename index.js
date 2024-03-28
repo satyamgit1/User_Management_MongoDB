@@ -1,47 +1,86 @@
 const express = require("express");
-const users = require("./MOCK_DATA.json");
+// const users = require("./MOCK_DATA.json");
 const fs = require("fs");
+const mongoose = require("mongoose");
+
+
 const app = express();
 const PORT = 2000;
+
+//connection
+mongoose.connect("mongodb://127.0.0.1:27017/user_management")
+.then(()=>console.log("MongoDb is Connected"))
+.catch(err => console.log("Mongodb error", err));
+
+
+
+
+//Schema of Mongoose
+const userSchema = new mongoose.Schema({
+firstName: {
+  type: String,
+  required: true
+},
+lastName: {
+  type: String,
+},
+email: {
+  type: String,
+  // required: true,
+
+},
+jobTitle: {
+  type: String,
+},
+gender: {
+  type: String,
+},
+},
+ {timestamps: true}
+);
+const User = mongoose.model("user",userSchema);
+
+
 // DATE: 26 march 2024
-//Middleware - plugin 
+//Middleware - plugin
 // use to send data from body
 app.use(express.urlencoded({ extended: false }));
 
-app.use((req,res,next)=>{
- 
-console.log("hello from middleware 1");
-// req.Username = "satyam singh";
-fs.appendFile(
-  "log.txt",
-  `\n${Date.now()}:${req.ip} ${req.method}: ${req.path}`,
-  (err, data) => {
-    next();
-  }
-);
+app.use((req, res, next) => {
+  console.log("hello from middleware 1");
+  // req.Username = "satyam singh";
+  fs.appendFile(
+    "log.txt",
+    `\n${Date.now()}:${req.ip} ${req.method}: ${req.path}`,
+    (err, data) => {
+      next();
+    }
+  );
 
-// return res.json({msg : "hello from middleware 1"});
-})
+  // return res.json({msg : "hello from middleware 1"});
+});
 
 // app.use((req,res,next)=>{
 //   console.log("helo from middleware 2", req.Username);
-  
+
 //   return next();
 //   })
 
 // ROUTES
 app.get("/api/users", (req, res) => {
   // console.log("I am in get route",req.Username);
+  res.setHeader("X-myname", "satyam singh"); //  put x before header it indicate that it is a custom header
   return res.json(users);
 });
 // this will display all the users with their details
 
 // HTML DOCUMENT RENDER
-app.get("/users", (req, res) => {
+app.get("/users", async (req, res) => {
+  const allDbUsers = await User.find({});
   // Generate HTML dynamically using template literals
   const html = `
       <ul>
-        ${users.map((user) => `<li>${user.first_name}</li>`).join("")}
+        ${allDbUsers.map((user) => `<li>${user.firstName} - ${user.email}</li>`).join("")}
       </ul>
     `;
   // Send the HTML response
@@ -80,43 +119,64 @@ app
   })
   .put((req, res) => {
     const id = Number(req.params.id);
-    const index = users.findIndex(user => user.id === id);
+    const index = users.findIndex((user) => user.id === id);
     if (index !== -1) {
-        users[index] = req.body;
-        users[index].id = id; // Ensure ID remains unchanged
-        return res.json(users[index]);
+      users[index] = req.body;
+      users[index].id = id; // Ensure ID remains unchanged
+      return res.json(users[index]);
     } else {
-        return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
-})
-.patch((req, res) => {
-    const id = Number(req.params.id);
-    const index = users.findIndex(user => user.id === id);
-    if (index !== -1) {
-        users[index] = { ...users[index], ...req.body };
-        return res.json(users[index]);
-    } else {
-        return res.status(404).json({ error: 'User not found' });
-    }
-})
- // DELETE request to delete user by ID
- app.delete("/api/users/:id", (req, res) => {
+  })
+  .patch((req, res) => {
     const id = Number(req.params.id);
     const index = users.findIndex((user) => user.id === id);
     if (index !== -1) {
-      users.splice(index, 1);
-      return res.json({ success: true, message: "User deleted successfully" });
+      users[index] = { ...users[index], ...req.body };
+      return res.json(users[index]);
     } else {
       return res.status(404).json({ error: "User not found" });
     }
   });
+// DELETE request to delete user by ID
+app.delete("/api/users/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const index = users.findIndex((user) => user.id === id);
+  if (index !== -1) {
+    users.splice(index, 1);
+    return res.json({ success: true, message: "User deleted successfully" });
+  } else {
+    return res.status(404).json({ error: "User not found" });
+  }
+});
 
-app.post("/api/users", (req, res) => {
+app.post("/api/users", async (req, res) => {
   const body = req.body;
-  users.push({...body, id: users.length+1});
-  fs.writeFile("./MOCK_DATA.json", JSON.stringify(users), (error, data) => {
-    return res.json({ status: "Success", id: users.length });
+  if (
+    !body ||
+    !body.first_name ||
+    !body.last_name ||
+    !body.email ||
+    !body.gender ||
+    !body.job_title
+  ) {
+    // to check 400 status code
+    return res.status(400).json({ msg: "All fields are required" });
+  }
+  const result = await User.create({
+    firstName: body.first_name,
+    lastName: body.last_name,
+    email: body.email,
+    gender: body.gender,
+    jobTitle: body.job_title,
   });
+  console.log("result",result);
+  return res.status(201).json({ msg: "success" });
+  // below lines is commented out for mongoDB 
+  // users.push({ ...body, id: users.length + 1 });
+  // fs.writeFile("./MOCK_DATA.json", JSON.stringify(users), (error, data) => {
+  //   return res.json({ status: "Success", id: users.length });
+  // });
 });
 
 app.listen(PORT, () => {
